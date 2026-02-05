@@ -7,10 +7,6 @@ on:
       - 'README.md'
       - '.devcontainer/**'
       - '.github/**'
-  pull_request:
-    branches: [ main ]
-    types: [ closed ]
-    paths-ignore: *common_exclusions
 
 env:
   REGISTRY: ghcr.io

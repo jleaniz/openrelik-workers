@@ -7,10 +7,6 @@ on:
     paths: &common
       - 'workers/openrelik-worker-extraction/**'
       - 'workers/openrelik-worker-plaso/**'
-  pull_request:
-    branches: [ main ]
-    types: [ closed ]
-    paths: *common
   release:
     types: [published]
 
