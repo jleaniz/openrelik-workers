@@ -1,2 +1,3 @@
 workers/openrelik-worker-floss: 'workers/openrelik-worker-floss/**'
 workers/openrelik-worker-yara: 'workers/openrelik-worker-yara/**'
+workers/openrelik-worker-os-creds: 'workers/openrelik-worker-os-creds/**'
