@@ -17,7 +17,6 @@
 import pytest
 import datetime
 import os
-import shutil
 
 import src.ssh_analyzer as ssh_analyzer
 

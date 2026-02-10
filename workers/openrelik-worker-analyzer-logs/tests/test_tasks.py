@@ -15,6 +15,7 @@
 import base64
 import filecmp
 import json
+import os
 import time
 from threading import Thread
 from unittest.mock import patch
@@ -67,6 +68,21 @@ server_thread.start()
 time.sleep(0.1)
 
 
+def setUpModule():
+    """Executed once before any tests in this module run."""
+    os.environ["TZ"] = "UTC"
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+
+def tearDownModule():
+    """Optional: Restores the environment after all tests are finished."""
+    if "TZ" in os.environ:
+        del os.environ["TZ"]
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+
 class TestTasks:
     @patch("src.app.redis.Redis.from_url")
     def test_run_ssh_analyzer(self, mock_redisclient):
@@ -76,7 +92,7 @@ class TestTasks:
             input_files=_INPUT_FILES,
             output_path="/tmp",
             workflow_id="deadbeef",
-            task_config={},
+            task_config={"log_year": "2025"},
         )
 
         output_dict = json.loads(base64.b64decode(output))
