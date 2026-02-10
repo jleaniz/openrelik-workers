@@ -174,7 +174,9 @@ def command(
                 all_patterns += rf.read()
                 total_rules_read += 1
         if os.path.isdir(rule_path):
-            for rule_file in glob.glob(os.path.join(rule_path, "**/*.yar*"), recursive=True):
+            for rule_file in glob.glob(
+                os.path.join(rule_path, "**/*.yar*"), recursive=True
+            ):
                 with open(rule_file, encoding="utf-8") as rf:
                     all_patterns += rf.read()
                     total_rules_read += 1
@@ -185,7 +187,9 @@ def command(
         all_patterns += manual_yara
 
     if not all_patterns:
-        error_msg = "No Yara rules were collected, provide Global and/or manual Yara rules"
+        error_msg = (
+            "No Yara rules were collected, provide Global and/or manual Yara rules"
+        )
         logger.error(error_msg)
         raise ValueError(error_msg)
 
@@ -194,16 +198,18 @@ def command(
         fh.write(all_patterns)
 
     all_matches = []
-    fraken_output = create_output_file(output_path, display_name="fraken_out.jsonl")
+    fraken_output = create_output_file(
+        output_path, display_name="fraken_out.jsonl", data_type="yara:yara-scan:jsonl"
+    )
     output_files.append(fraken_output.to_dict())
 
     input_files = get_input_files(pipe_result, input_files)
 
     input_files_map = {}
     for input_file in input_files:
-        input_files_map[input_file.get("path", input_file.get("uuid", "UNKNOWN FILE"))] = (
-            input_file.get("display_name", "UNKNOWN FILE NAME")
-        )
+        input_files_map[
+            input_file.get("path", input_file.get("uuid", "UNKNOWN FILE"))
+        ] = input_file.get("display_name", "UNKNOWN FILE NAME")
 
     disks_mounted = []
     try:
@@ -211,7 +217,9 @@ def command(
         bd = None
         for input_file in input_files:
             if "path" not in input_file:
-                logger.warning("Skipping file %s as it does not have an path", input_file)
+                logger.warning(
+                    "Skipping file %s as it does not have an path", input_file
+                )
                 continue
 
             input_file_path = input_file.get("path")
@@ -261,7 +269,9 @@ def command(
             for match in matches:
                 all_matches.append(
                     YaraMatch(
-                        filepath=input_files_map.get(match["ImagePath"], match["ImagePath"]),
+                        filepath=input_files_map.get(
+                            match["ImagePath"], match["ImagePath"]
+                        ),
                         hash=match["SHA256"],
                         rule=match["Signature"],
                         desc=match["Description"],
