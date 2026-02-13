@@ -22,7 +22,11 @@ from celery import signals
 from celery.utils.log import get_task_logger
 from openrelik_common import telemetry
 from openrelik_common.logging import Logger
-from openrelik_worker_common.file_utils import create_output_file, is_disk_image
+from openrelik_worker_common.file_utils import (
+    create_output_file,
+    is_disk_image,
+    OutputFile,
+)
 from openrelik_worker_common.mount_utils import BlockDevice
 from openrelik_worker_common.reporting import MarkdownTable, Priority, Report
 from openrelik_worker_common.task_utils import create_task_result, get_input_files
@@ -92,6 +96,41 @@ class YaraMatch:
     desc: str
     ref: str
     score: int
+
+
+def cleanup_fraken_output_log(logfile: OutputFile) -> None:
+    """Cleanup fraken-x output to be one entry per line.
+
+    Args:
+        logfile: Output file created by fraken-x
+
+    Returns:
+        None
+    """
+    extracted_dicts = []
+    try:
+        with open(logfile.path, "r") as f:
+            for line in f:
+                line = line.strip()
+                try:
+                    data = json.loads(line)
+                    if isinstance(data, list) and len(data) > 0:
+                        for entry in data:
+                            extracted_dicts.append(entry)
+                except json.JSONDecodeError:
+                    logger.warning(
+                        f"Incorrect fraken-x JSON line found: could not parse: {line}"
+                    )
+                    continue
+    except FileNotFoundError:
+        logger.warning("Could not find fraken-x outputfile.")
+        return
+
+    with open(logfile.path, "w") as f:
+        if not extracted_dicts:
+            f.write("[]")
+        else:
+            json.dump(extracted_dicts, f)
 
 
 def generate_report_from_matches(matches: list[YaraMatch]) -> Report:
@@ -279,6 +318,8 @@ def command(
                         score=match["Score"],
                     )
                 )
+
+    cleanup_fraken_output_log(fraken_output)
 
     report = generate_report_from_matches(all_matches)
     report_file = create_output_file(

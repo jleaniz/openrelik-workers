@@ -1,0 +1,5 @@
+[]
+[{"ImagePath":"/mnt/6b4d6576dbc74042a010eaa6e9de4aab/usr/bin/socat","SHA256":"997fd3ad95aa1045b934b233c81285bf6b42b51a127d9f3a450c9955f453eefc","Signature":"SEKOIA_Hacktool_Socat_Strings","Description":"Detects socat","Reference":"https://github.com/SEKOIA-IO/Community","Score":75}]
+[{"ImagePath":"/mnt/f7c688a2f94843489341f98d456339c0/usr/bin/socat","SHA256":"ba692a8695545d457969c0fd12d26eda62c745989114d7428ba76a4606ea7374","Signature":"SEKOIA_Hacktool_Socat_Strings","Description":"Detects socat","Reference":"https://github.com/SEKOIA-IO/Community","Score":75}]
+[]
+[]
