@@ -22,6 +22,7 @@ body:
         - openrelik-worker-cloud-logs
         - openrelik-worker-containers
         - openrelik-worker-dfindexeddb
+        - openrelik-worker-duckdb
         - openrelik-worker-entropy
         - openrelik-worker-exif
         - openrelik-worker-extraction
