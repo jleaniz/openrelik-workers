@@ -1,5 +1,4 @@
 workers/openrelik-worker-bulkextractor: 'workers/openrelik-worker-bulkextractor/**'
-workers/openrelik-worker-capa: 'workers/openrelik-worker-capa/**'
 workers/openrelik-worker-chromecreds: 'workers/openrelik-worker-chromecreds/**'
 workers/openrelik-worker-entropy: 'workers/openrelik-worker-entropy/**'
 workers/openrelik-worker-exif: 'workers/openrelik-worker-exif/**'
