@@ -1,0 +1,27 @@
+[project]
+name = "openrelik-worker-cloud-logs"
+version = "0.1.0"
+description = "OpenRelik worker to process Cloud provider logs."
+authors = [{ name = "roshan maskey", email = "roshanmaskey@gmail.com" }]
+requires-python = "<4.0,>=3.11"
+readme = "README.md"
+dependencies = [
+    "celery[redis]>=5.4.0,<6",
+    "openrelik-worker-common>=0.17.1,<1.0.0",
+    "orjson>=3.10.16,<4",
+]
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov>=5.0.0,<6",
+    "pytest-mock>=3.14.0,<4",
+]
+
+[tool.uv]
+package = false
+default-groups = ["test"]
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"

@@ -51,7 +51,7 @@ jobs:
         # Optional: Caching poetry per subfolder
         cache: 'pip' 
 
-    - name: Install Poetry
+    - name: Install Poetry and dependencies
       # We run this in the subfolder so it finds the correct pyproject.toml
       run: |
         pip install poetry

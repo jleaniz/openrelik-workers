@@ -1,0 +1,27 @@
+[project]
+name = "openrelik-worker-dfindexeddb"
+version = "2026.01.20"
+description = "Parse and analyze indexeddb/leveldb files."
+authors = [{ name = "sydp@google.com" }]
+requires-python = ">=3.11,<4.0"
+readme = "README.md"
+
+dependencies = [
+    "celery[redis]>=5.4.0,<6",
+    "openrelik-worker-common>=0.16.1",
+    "dfindexeddb[plugins]>=20251109,<20251110",
+]
+
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov>=5.0.0,<6",
+]
+
+[tool.uv]
+package = false
+default-groups = ["test"]
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"

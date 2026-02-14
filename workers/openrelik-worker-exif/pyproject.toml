@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "openrelik-worker-exif"
+version = "0.1.0"
+description = "This worker should extract exif information from files"
+authors = ["Alexander Jaeger <mail@alexanderjaeger.de>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+celery = { extras = ["redis"], version = "^5.4.0" }
+openrelik-worker-common = "^0.10.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "*"
+pytest-cov = "^5.0.0"
+pytest-mock = "^3.14.0"
+Pillow = "^10.0.0" # For image creation
+piexif = "^1.1.3"  # For EXIF manipulation
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
