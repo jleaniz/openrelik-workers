@@ -1,0 +1,4 @@
+Project-Alpha-Initiated
+Target_URL: http://malicious-site.com/payload
+MD5_Hash: 5d41402abc4b2a76b9719d911017c592
+Encryption_Key: AX29-Z99-Q

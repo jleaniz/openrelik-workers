@@ -1,5 +1,4 @@
 []
-[{"ImagePath":"/mnt/6b4d6576dbc74042a010eaa6e9de4aab/usr/bin/socat","SHA256":"997fd3ad95aa1045b934b233c81285bf6b42b51a127d9f3a450c9955f453eefc","Signature":"SEKOIA_Hacktool_Socat_Strings","Description":"Detects socat","Reference":"https://github.com/SEKOIA-IO/Community","Score":75}]
-[{"ImagePath":"/mnt/f7c688a2f94843489341f98d456339c0/usr/bin/socat","SHA256":"ba692a8695545d457969c0fd12d26eda62c745989114d7428ba76a4606ea7374","Signature":"SEKOIA_Hacktool_Socat_Strings","Description":"Detects socat","Reference":"https://github.com/SEKOIA-IO/Community","Score":75}]
+[{"ImagePath":"/usr/share/openrelik/data/artifacts/test_input.txt","SHA256":"2aab6dc411baf0605a1b284128323709e38b0f1d147d09cfbc24997acb9527eb","Signature":"Detect_Project_Alpha","Description":"Detects files associated with Project Alpha","Reference":"","Score":50},{"ImagePath":"/usr/share/openrelik/data/artifacts/test_input.txt","SHA256":"2aab6dc411baf0605a1b284128323709e38b0f1d147d09cfbc24997acb9527eb","Signature":"Detect_Malicious_URL","Description":"Identifies specific malicious URL patterns","Reference":"","Score":50}]
 []
 []

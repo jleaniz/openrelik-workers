@@ -37,7 +37,7 @@ def test_cleanup_successful(mock_logfile):
 
     # Verify the first entry's content
     assert (
-        "997fd3ad95aa1045b934b233c81285bf6b42b51a127d9f3a450c9955f453eefc" in lines[0]
+        "2aab6dc411baf0605a1b284128323709e38b0f1d147d09cfbc24997acb9527eb" in lines[0]
     )
     # Verify it is no longer wrapped in a list (starts with { not [)
     assert lines[0].startswith("[{")
@@ -95,4 +95,4 @@ def test_final_output_is_valid_json_array(mock_logfile):
 
     assert isinstance(data, list), "Output should be a JSON array (list)."
     assert len(data) == 2, "Should contain exactly two extracted entries."
-    assert data[0]["ImagePath"].endswith("socat")
+    assert data[0]["ImagePath"].endswith("test_input.txt")

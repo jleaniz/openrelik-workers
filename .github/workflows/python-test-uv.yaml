@@ -59,7 +59,9 @@ jobs:
         uv sync --group test
 
     - name: Test with pytest - ${{ matrix.package }}
-      run: uv run pytest -s --cov=. --cov-branch --cov-report=xml -v
+      run: uv run pytest -s --cov=. -v
+      #  Enable below line for Codecov reports
+      #  run: uv run pytest -s --cov=. --cov-branch --cov-report=xml -v
 
     # - name: Upload coverage reports to Codecov
     #   # Codecov action runs from root, so we path into the folder for the report

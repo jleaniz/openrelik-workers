@@ -58,8 +58,9 @@ jobs:
         poetry install --with test --no-root
 
     - name: Test with pytest
-      run: |
-        poetry run pytest -s --cov=. --cov-branch --cov-report=xml -v
+      run: poetry run pytest -s --cov=. -v
+      #  Enable below line for Codecov reports
+      #  run: poetry run pytest -s --cov=. --cov-branch --cov-report=xml -v  
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
