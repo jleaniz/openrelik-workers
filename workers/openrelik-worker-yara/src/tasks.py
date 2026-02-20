@@ -201,8 +201,18 @@ def command(
     manual_yara = task_config.get("Manual Yara rules", "")
     mount_disk_images = task_config.get("mount_disk_images", False)
 
-    if not global_yara and not manual_yara:
-        error_msg = "At least one of Global and/or Manual Yara rules must be provided"
+    # If the environment variable YARA_RULES_FOLDER is set, add it to the global Yara rules
+    env_yara = os.getenv("YARA_RULES_FOLDER", "")
+    if env_yara:
+        logger.info(
+            f"Environment variable YARA_RULES_FOLDER provided, added {env_yara} to global Yara rules"
+        )
+        global_yara += f"\n{env_yara}"
+
+    if not global_yara and not manual_yara and not env_yara:
+        error_msg = (
+            "At least one of Environment, Global or Manual Yara rules must be provided"
+        )
         logger.error(error_msg)
         raise RuntimeError(error_msg)
 
