@@ -36,7 +36,6 @@ The worker offers task-specific configurations that can be set through the OpenR
 
 ## Test
 ```
-pip install poetry
-poetry install --with test --no-root
-poetry run pytest --cov=. -v
+uv sync --group test
+uv run pytest -s --cov=.
 ```

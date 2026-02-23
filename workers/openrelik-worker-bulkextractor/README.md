@@ -29,3 +29,9 @@ To deploy this worker, add the following service definition to your `docker-comp
       - ./data:/usr/share/openrelik/data
     command: "celery --app=src.app worker --task-events --concurrency=1 --loglevel=INFO -Q openrelik-worker-bulkextractor"
 ```
+
+## Test
+```
+uv sync --group test
+uv run pytest -s --cov=.
+```

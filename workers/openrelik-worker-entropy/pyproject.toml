@@ -1,21 +1,27 @@
-[tool.poetry]
-name = "openrelik-worker-TEMPLATE-WORKER-NAME"
+[project]
+name = "openrelik-worker-entropy"
 version = "0.1.0"
-description = "Description of the worker"
-authors = ["YOUR NAME <email@example.com>"]
+description = "Calculate entropy of files"
+authors = [{ name = "Ramses de Beer", email = "ramsesdebeer@gmail.com" }]
+requires-python = ">=3.12,<4"
 readme = "README.md"
-package-mode = false
+dependencies = [
+    "celery[redis]>=5.4.0,<6",
+    "openrelik-worker-common>=0.17.1",
+    "debugpy>=1.8.7,<2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-celery = { extras = ["redis"], version = "^5.4.0" }
-openrelik-worker-common = "^0.12.0"
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov>=5.0.0,<6",
+    "pytest-mock>=3.14.0",
+]
 
-[tool.poetry.group.test.dependencies]
-pytest = "*"
-pytest-cov = "^5.0.0"
-pytest-mock = "^3.14.0"
+[tool.uv]
+package = false
+default-groups = ["test"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

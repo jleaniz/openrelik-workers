@@ -1,7 +1,3 @@
-workers/openrelik-worker-bulkextractor: 'workers/openrelik-worker-bulkextractor/**'
-workers/openrelik-worker-chromecreds: 'workers/openrelik-worker-chromecreds/**'
-workers/openrelik-worker-entropy: 'workers/openrelik-worker-entropy/**'
-workers/openrelik-worker-exif: 'workers/openrelik-worker-exif/**'
 workers/openrelik-worker-grep: 'workers/openrelik-worker-grep/**'
 workers/openrelik-worker-llm: 'workers/openrelik-worker-llm/**'
 workers/openrelik-worker-photorec: 'workers/openrelik-worker-photorec/**'

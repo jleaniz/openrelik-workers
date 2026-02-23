@@ -1,11 +1,3 @@
-<!--
-README for the OpenRelik Worker Template
-
-This file provides instructions on how to use this template to create a new OpenRelik worker.
-The placeholder `entropy` needs to be replaced with the actual name of your worker.
-The `bootstrap.sh` script is designed to help with this process.
--->
-
 # Openrelik worker entropy
 ## Description
 
@@ -32,7 +24,6 @@ openrelik-worker-entropy:
 
 ## Test
 ```
-pip install poetry
-poetry install --with test --no-root
-poetry run pytest --cov=. -v
+uv sync --group test
+uv run pytest -s --cov=.
 ```
