@@ -1,23 +1,28 @@
-[tool.poetry]
+[project]
 name = "openrelik-worker-llm"
 version = "0.1.0"
 description = "OpenRelik LLM Worker"
-authors = ["Benjamin Koffel <benjaminkoffel@gmail.com>"]
-license = "Apache 2.0"
+authors = [{ name = "Benjamin Koffel", email = "benjaminkoffel@gmail.com" }]
+requires-python = ">=3.12,<4"
 readme = "README.md"
-package-mode = false
+dependencies = [
+    "celery[redis]>=5.3.6,<6",
+    "openrelik-worker-common>=0.17.0",
+    "openrelik-ai-common>=0.5.0",
+    "debugpy>=1.8.7,<2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-celery = { extras = ["redis"], version = "^5.3.6" }
-openrelik-worker-common = "^0.10.0"
-openrelik-ai-common = "~0.5.0"
+[dependency-groups]
+test = [
+    "pytest",
+    "pytest-cov>=5.0.0,<6",
+    "pytest-mock>=3.14.0,<4",
+]
 
-[tool.poetry.group.test.dependencies]
-pytest = "*"
-pytest-cov = "^5.0.0"
-pytest-mock = "^3.14.0"
+[tool.uv]
+package = false
+default-groups = ["test"]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

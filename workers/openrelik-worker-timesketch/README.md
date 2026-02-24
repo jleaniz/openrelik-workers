@@ -64,3 +64,8 @@ docker compose exec timesketch-web tsctl create-user openrelik
     command: "celery --app=src.app worker --task-events --concurrency=1 --loglevel=INFO -Q openrelik-worker-timesketch"
 ```
 
+## Test
+```
+uv sync --group test
+uv run pytest -s --cov=.
+```

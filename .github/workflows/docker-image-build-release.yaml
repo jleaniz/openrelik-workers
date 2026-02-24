@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Combine filters
-        run: awk 1 .github/repos-poetry.yaml .github/repos-uv.yaml > combined-repos.yaml
+        run: awk 1 .github/repos-uv.yaml > combined-repos.yaml
 
       # Determine the final list of services for the matrix
       - name: Set Service List

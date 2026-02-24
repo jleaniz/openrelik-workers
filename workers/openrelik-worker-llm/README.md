@@ -48,3 +48,9 @@ verifying sha256 digest
 writing manifest
 success
 ```
+
+## Test
+```
+uv sync --group test
+uv run pytest -s --cov=.
+```
