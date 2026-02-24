@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11, <4.0"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -874,6 +874,7 @@ dependencies = [
     { name = "celery", extra = ["redis"] },
     { name = "openrelik-common" },
     { name = "openrelik-worker-common" },
+    { name = "setuptools" },
 ]
 
 [package.dev-dependencies]
@@ -882,6 +883,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
+    { name = "setuptools" },
 ]
 
 [package.metadata]
@@ -889,6 +891,7 @@ requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0,<6" },
     { name = "openrelik-common", specifier = ">=0.7.0,<1.0.0" },
     { name = "openrelik-worker-common", specifier = ">=0.17.1,<1.0.0" },
+    { name = "setuptools", specifier = ">=80.10.2" },
 ]
 
 [package.metadata.requires-dev]
@@ -897,6 +900,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-cov", specifier = ">=5.0.0,<6" },
     { name = "pytest-mock", specifier = ">=3.14.0,<4" },
+    { name = "setuptools", specifier = ">=80.10.2" },
 ]
 
 [[package]]
