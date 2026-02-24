@@ -33,25 +33,25 @@ def analyze_accts(files: list[dict]) -> Report:
     Returns:
         report (Report): The analysis report.
     """
-    file_path = os.path.commonpath([y.get('path', '') for y in files])
+    file_path = os.path.commonpath([y.get("path", "") for y in files])
     (system, sam) = _extract_system_and_sam_from_input_files(files)
 
-    (creds, hashnames) = _extract_windows_hashes(location=file_path,
-                                                 system=system,
-                                                 sam=sam)
+    (creds, hashnames) = _extract_windows_hashes(
+        location=file_path, system=system, sam=sam
+    )
     logger.debug("Extracted %d Windows creds", len(creds))
 
-    ntds_files = [y for y in files if y.get('display_name', '') == 'ntds.dit']
+    ntds_files = [y for y in files if y.get("display_name", "") == "ntds.dit"]
     for ntds in ntds_files:
         try:
-            (adcreds,
-             adhashnames) = _extract_ad_hashes(file_path, system,
-                                               ntds.get('path', ''))
+            (adcreds, adhashnames) = _extract_ad_hashes(
+                file_path, system, ntds.get("path", "")
+            )
             logger.debug("Extracted %d AD creds", len(adcreds))
             creds.extend(adcreds)
             hashnames = hashnames | adhashnames
         except Exception as e:
-            raise RuntimeError('Unable to extract AD credentials (not a DC?)') from e
+            raise RuntimeError("Unable to extract AD credentials (not a DC?)") from e
 
     return analyse_windows_creds(creds, hashnames)
 
@@ -60,16 +60,14 @@ def _extract_system_and_sam_from_input_files(files):
     system = "SYSTEM"
     sam = "SAM"
     for file in files:
-        if file.get('display_name', '').upper() == 'SAM':
-            sam = file.get('uuid', 'SAM')
-        if file.get('display_name', '').upper() == 'SYSTEM':
-            system = file.get('uuid', 'SYSTEM')
+        if file.get("display_name", "").upper() == "SAM":
+            sam = file.get("uuid", "SAM")
+        if file.get("display_name", "").upper() == "SYSTEM":
+            system = file.get("uuid", "SYSTEM")
     return (system, sam)
 
 
-def _extract_windows_hashes(location: str,
-                            system: str = "SYSTEM",
-                            sam: str = "SAM"):
+def _extract_windows_hashes(location: str, system: str = "SYSTEM", sam: str = "SAM"):
     """Dump the secrets from the Windows registry files.
 
     Args:
@@ -86,38 +84,46 @@ def _extract_windows_hashes(location: str,
     """
 
     # Default (empty) hash
-    IGNORE_CREDS = ['31d6cfe0d16ae931b73c59d7e0c089c0']
+    IGNORE_CREDS = ["31d6cfe0d16ae931b73c59d7e0c089c0"]
 
-    hash_file = os.path.join(tempfile.gettempdir(), 'windows_hashes')
+    hash_file = os.path.join(tempfile.gettempdir(), "windows_hashes")
     cmd = [
-        'secretsdump.py', '-system',
-        os.path.join(location, system), '-sam',
-        os.path.join(location, sam), '-hashes', 'lmhash:nthash', 'LOCAL',
-        '-outputfile', hash_file
+        "secretsdump.py",
+        "-system",
+        os.path.join(location, system),
+        "-sam",
+        os.path.join(location, sam),
+        "-hashes",
+        "lmhash:nthash",
+        "LOCAL",
+        "-outputfile",
+        hash_file,
     ]
 
     ret_code = execution_helper(cmd)
     if ret_code != 0:
-        raise RuntimeError(f'Unable to execute command {cmd:s} -- Return Code {ret_code:d}')
+        cmd_string = " ".join(cmd)
+        raise RuntimeError(
+            f"Unable to execute command {cmd_string} -- Return Code {ret_code:d}"
+        )
 
     creds = []
     hashnames: dict[str, str] = {}
-    hash_file = hash_file + '.sam'
+    hash_file = hash_file + ".sam"
     if os.path.isfile(hash_file):
-        with open(hash_file, 'r', encoding='utf-8') as fh:
+        with open(hash_file, "r", encoding="utf-8") as fh:
             for line in fh:
-                (username, _, _, passwdhash, _, _, _) = line.split(':')
+                (username, _, _, passwdhash, _, _, _) = line.split(":")
                 if passwdhash in IGNORE_CREDS:
                     continue
                 creds.append(line.strip())
                 if passwdhash in hashnames:
-                    hashnames[
-                        passwdhash] = hashnames[passwdhash] + ", " + username
+                    hashnames[passwdhash] = hashnames[passwdhash] + ", " + username
                 else:
                     hashnames[passwdhash] = username
         os.remove(hash_file)
     else:
-        raise RuntimeError('Extracted hash file not found.')
+        raise RuntimeError("Extracted hash file not found.")
 
     return (creds, hashnames)
 
@@ -138,37 +144,45 @@ def _extract_ad_hashes(path, system, ntds_location):
         hashnames (dict): Dict mapping hash back to username for convenience.
     """
     # Default (empty) hash
-    IGNORE_CREDS = ['31d6cfe0d16ae931b73c59d7e0c089c0']
+    IGNORE_CREDS = ["31d6cfe0d16ae931b73c59d7e0c089c0"]
 
-    hash_file = os.path.join(tempfile.gettempdir(), 'ad_hashes')
+    hash_file = os.path.join(tempfile.gettempdir(), "ad_hashes")
     cmd = [
-        'secretsdump.py', '-system',
-        os.path.join(path, system), '-ntds', ntds_location, '-hashes',
-        'lmhash:nthash', 'LOCAL', '-outputfile', hash_file
+        "secretsdump.py",
+        "-system",
+        os.path.join(path, system),
+        "-ntds",
+        ntds_location,
+        "-hashes",
+        "lmhash:nthash",
+        "LOCAL",
+        "-outputfile",
+        hash_file,
     ]
 
     ret_code = execution_helper(cmd)
     if ret_code != 0:
-        raise RuntimeError(f'Unable to execute command {cmd:s} -- Return Code {ret_code:d}')
+        raise RuntimeError(
+            f"Unable to execute command {cmd:s} -- Return Code {ret_code:d}"
+        )
 
     creds = []
     hashnames = {}
-    hash_file = hash_file + '.ntds'
+    hash_file = hash_file + ".ntds"
     if os.path.isfile(hash_file):
-        with open(hash_file, 'r', encoding='utf-8') as fh:
+        with open(hash_file, "r", encoding="utf-8") as fh:
             for line in fh:
-                (username, _, _, passwdhash, _, _, _) = line.split(':')
+                (username, _, _, passwdhash, _, _, _) = line.split(":")
                 if passwdhash in IGNORE_CREDS:
                     continue
                 creds.append(line.strip())
                 if passwdhash in hashnames:
-                    hashnames[
-                        passwdhash] = hashnames[passwdhash] + ", " + username
+                    hashnames[passwdhash] = hashnames[passwdhash] + ", " + username
                 else:
                     hashnames[passwdhash] = username
         os.remove(hash_file)
     else:
-        raise RuntimeError('Extracted hash file not found.')
+        raise RuntimeError("Extracted hash file not found.")
 
     return (creds, hashnames)
 
@@ -196,16 +210,21 @@ def analyse_windows_creds(creds, hashnames, timeout=300):
         password_list_file_path="/openrelik/password.lst",
         password_rules_file_path="/openrelik/openrelik-password-cracking.rules",
         timeout=timeout,
-        extra_args='-m 1000')
+        extra_args="-m 1000",
+    )
 
     if weak_passwords:
         report.priority = Priority.CRITICAL
-        report.summary = f'Registry analysis found {len(weak_passwords):d} weak password(s)'
-        line = f'{len(weak_passwords):n} weak password(s) found:'
+        report.summary = (
+            f"Registry analysis found {len(weak_passwords):d} weak password(s)"
+        )
+        line = f"{len(weak_passwords):n} weak password(s) found:"
         details_section.add_bullet(line)
         for password_hash, plaintext in weak_passwords:
             if password_hash in hashnames:
-                line = f"User '{hashnames[password_hash]:s}' with password '{plaintext:s}'"
+                line = (
+                    f"User '{hashnames[password_hash]:s}' with password '{plaintext:s}'"
+                )
                 details_section.add_bullet(line, level=2)
     else:
         report.summary = "No weak passwords found"
@@ -215,9 +234,7 @@ def analyse_windows_creds(creds, hashnames, timeout=300):
 
 
 def execution_helper(cmd):
-    proc = subprocess.Popen(cmd,
-                            stderr=subprocess.PIPE,
-                            stdout=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     _, stderr = proc.communicate()
     if stderr:
         logger.warning(str(stderr))

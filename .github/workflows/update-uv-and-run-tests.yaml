@@ -7,6 +7,7 @@ on:
 jobs:
   list-services:
     runs-on: ubuntu-latest
+    continue-on-error: true
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
