@@ -7,7 +7,6 @@ on:
 jobs:
   list-services:
     runs-on: ubuntu-latest
-    continue-on-error: true
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -21,6 +20,7 @@ jobs:
     needs: list-services
     if: ${{ needs.list-services.outputs.matrix != '[]' }}
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
         service: ${{ fromJson(needs.list-services.outputs.matrix) }}
