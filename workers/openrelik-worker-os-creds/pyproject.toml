@@ -9,6 +9,7 @@ dependencies = [
     "celery[redis]>=5.4.0,<6",
     "openrelik-common>=0.7.0,<1.0.0",
     "openrelik-worker-common>=0.17.1,<1.0.0",
+    "impacket>=0.12.0,<0.13",
     "setuptools>=80.10.2",
 ]
 
