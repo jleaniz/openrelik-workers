@@ -208,7 +208,7 @@ def command(
             f"Environment variable YARA_RULES_FOLDER provided, added {env_yara} to global Yara rules"
         )
         if not global_yara:
-            global_yara = f"env_yara"
+            global_yara = f"{env_yara}"
         else:
             global_yara += f"\n{env_yara}"
 
