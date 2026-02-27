@@ -207,7 +207,10 @@ def command(
         logger.info(
             f"Environment variable YARA_RULES_FOLDER provided, added {env_yara} to global Yara rules"
         )
-        global_yara += f"\n{env_yara}"
+        if not global_yara:
+            global_yara = f"env_yara"
+        else:
+            global_yara += f"\n{env_yara}"
 
     if not global_yara and not manual_yara and not env_yara:
         error_msg = (
