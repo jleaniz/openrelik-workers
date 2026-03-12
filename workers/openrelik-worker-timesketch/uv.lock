@@ -725,7 +725,7 @@ requires-dist = [
     { name = "celery", extras = ["redis"], specifier = ">=5.4.0,<6" },
     { name = "debugpy", specifier = ">=1.8.7,<2" },
     { name = "openrelik-worker-common", specifier = ">=0.17" },
-    { name = "timesketch-api-client", specifier = ">=20240215" },
+    { name = "timesketch-api-client", specifier = ">=20260311" },
     { name = "timesketch-import-client", specifier = ">=20230721" },
 ]
 
@@ -1128,7 +1128,7 @@ wheels = [
 
 [[package]]
 name = "timesketch-api-client"
-version = "20260209"
+version = "20260311"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "altair" },
@@ -1140,7 +1140,7 @@ dependencies = [
     { name = "pandas" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/25/5494486ba7fd3b277187b2d9b0107864117196ac05f66dc31c14c286427c/timesketch_api_client-20260209.tar.gz", hash = "sha256:30509d39e14f0b4eaac6c548f97692453a4d9187fb7e461d8f6407aa5c0a29fb", size = 80912, upload-time = "2026-02-09T20:54:14.073Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/df/8d01cf56f64e6eac5a1715eeb19dc9dc5b9ce841940768b0c8a120d5f4d3/timesketch_api_client-20260311.tar.gz", hash = "sha256:f5d98b9ed593adcff330a21e86312857b61e80ed918c6c616e0ed62b241cb533", size = 81543, upload-time = "2026-03-11T14:54:39.529Z" }
 
 [[package]]
 name = "timesketch-import-client"
