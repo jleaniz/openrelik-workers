@@ -52,6 +52,13 @@ MAX_INDEXING_RETRIES = 240
 POLL_INTERVAL_SECONDS = 5
 
 
+def _find_sketch_by_name(timesketch_api_client, sketch_name: str):
+    for sketch in timesketch_api_client.list_sketches():
+        if sketch.name == sketch_name:
+            return sketch
+    return None
+
+
 def get_or_create_sketch(
     timesketch_api_client,
     redis_client,
@@ -67,7 +74,7 @@ def get_or_create_sketch(
         client: Timesketch API client.
         redis_client: Redis client.
         sketch_id: ID of the sketch to retrieve.
-        sketch_name: Name of the sketch to create.
+        sketch_name: Name of the sketch to use or create.
         workflow_id: ID of the workflow.
 
     Returns:
@@ -81,7 +88,14 @@ def get_or_create_sketch(
         except ValueError:
             raise ValueError(f"Sketch ID must be a number. Received: '{sketch_id}'")
     elif sketch_name:
-        sketch = timesketch_api_client.create_sketch(sketch_name)
+        with redis_client.lock(
+            f"timesketch-sketch-name:{sketch_name}",
+            timeout=60,
+            blocking_timeout=5,
+        ):
+            sketch = _find_sketch_by_name(timesketch_api_client, sketch_name)
+            if not sketch:
+                sketch = timesketch_api_client.create_sketch(sketch_name)
     else:
         sketch_name = f"openrelik-workflow-{workflow_id}"
         # Prevent multiple distributed workers from concurrently creating the same
@@ -90,10 +104,7 @@ def get_or_create_sketch(
         # The lock automatically expires after 60 seconds to prevent deadlocks.
         with redis_client.lock(sketch_name, timeout=60, blocking_timeout=5):
             # Search for an existing sketch while having the lock
-            for _sketch in timesketch_api_client.list_sketches():
-                if _sketch.name == sketch_name:
-                    sketch = _sketch
-                    break
+            sketch = _find_sketch_by_name(timesketch_api_client, sketch_name)
 
             # If not found, create a new one
             if not sketch:
@@ -119,8 +130,10 @@ TASK_METADATA = {
         },
         {
             "name": "sketch_name",
-            "label": "Name of the new sketch to create",
-            "description": "Create a new sketch",
+            "label": "Name of the sketch to use or create",
+            "description": (
+                "Use an existing sketch by name, or create it if it does not exist"
+            ),
             "type": "text",
             "required": False,
         },
