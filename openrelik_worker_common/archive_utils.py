@@ -24,9 +24,9 @@ def extract_archive(
     output_folder: str,
     log_file: str,
     file_filter: list = [],
-    file_exclusion_filter: list = [],
     archive_password: str | None = None,
     ignore_prompts: bool = True,
+    file_exclusion_filter: list = [],
 ) -> tuple[str, str]:
     """Unpacks an archive.
 
@@ -35,9 +35,9 @@ def extract_archive(
       output_folder(string): OpenRelik output_folder.
       log_file(string): Log file path.
       file_filter(list): List of file patterns to extract (optional).
-      file_exclusion_filter(list): List of file patterns to exclude (optional).
       archive_password(str | None): Password of the input archives (optional).
       ignore_prompts(bool): Whether to ignore prompts during extraction (optional).
+      file_exclusion_filter(list): List of file patterns to exclude (optional).
 
     Return:
       command(string): The executed command string.
