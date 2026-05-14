@@ -24,6 +24,7 @@ def extract_archive(
     output_folder: str,
     log_file: str,
     file_filter: list = [],
+    file_exclusion_filter: list = [],
     archive_password: str | None = None,
     ignore_prompts: bool = True,
 ) -> tuple[str, str]:
@@ -34,6 +35,7 @@ def extract_archive(
       output_folder(string): OpenRelik output_folder.
       log_file(string): Log file path.
       file_filter(list): List of file patterns to extract (optional).
+      file_exclusion_filter(list): List of file patterns to exclude (optional).
       archive_password(str | None): Password of the input archives (optional).
       ignore_prompts(bool): Whether to ignore prompts during extraction (optional).
 
@@ -65,6 +67,9 @@ def extract_archive(
             command.extend(["--recursion", "--no-anchored"])
             for pattern in file_filter:
                 command.extend(["--wildcards", pattern.strip()])
+        if file_exclusion_filter:
+            for pattern in file_exclusion_filter:
+                command.append(f"--exclude={pattern.strip()}")
     else:
         command = [
             "7z",
@@ -76,6 +81,9 @@ def extract_archive(
             command.append("-y")
         if archive_password is not None:
             command.append(f"-p{archive_password}")
+        if file_exclusion_filter:
+            for pattern in file_exclusion_filter:
+                command.append(f"-xr!{pattern.strip()}")
         if file_filter:
             command.append("-r")
             for pattern in file_filter:
