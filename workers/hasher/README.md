@@ -72,8 +72,8 @@ ssdeep_results.json:
 ```
 
 ## Test
+```bash
+uv sync
+uv run pytest --cov=. -v
 ```
-pip install poetry
-poetry install --with test --no-root
-poetry run pytest --cov=. -v
-```
+

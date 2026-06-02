@@ -5,18 +5,20 @@ FROM ubuntu:24.04
 # the docker container.
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# Install poetry and any other dependency that your worker needs.
+# Install system dependencies (excluding python3-poetry, but ensuring python3 is installed)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-poetry \
+    python3 \
     ssdeep \
     # Add your dependencies here
     && rm -rf /var/lib/apt/lists/*
 
-# Configure poetry
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=1 \
-    POETRY_VIRTUALENVS_CREATE=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Configure uv
+ENV UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1 \
+    UV_PYTHON_PREFERENCE=only-system
 
 # Configure debugging
 ARG OPENRELIK_PYDEBUG
@@ -27,16 +29,21 @@ ENV OPENRELIK_PYDEBUG_PORT=${OPENRELIK_PYDEBUG_PORT:-5678}
 # Set working directory
 WORKDIR /openrelik
 
-# Copy poetry toml and install dependencies
-COPY ./pyproject.toml ./poetry.lock ./
-RUN poetry install --no-interaction --no-ansi
+# Copy pyproject.toml and uv.lock, then install dependencies
+COPY ./pyproject.toml ./uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
 
 # Copy files needed to build
 COPY . ./
 
-# Install the worker and set environment to use the correct python interpreter.
-RUN poetry install && rm -rf $POETRY_CACHE_DIR
-ENV VIRTUAL_ENV=/app/.venv PATH="/openrelik/.venv/bin:$PATH"
+# Final sync to compile bytecode/ensure sync if any local modifications affect it
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-dev
+
+# Set environment to use the correct python interpreter.
+ENV VIRTUAL_ENV=/openrelik/.venv PATH="/openrelik/.venv/bin:$PATH"
 
 # Default command if not run from docker-compose (and command being overidden)
 CMD ["celery", "--app=src.tasks", "worker", "--task-events", "--concurrency=1", "--loglevel=INFO"]
+
