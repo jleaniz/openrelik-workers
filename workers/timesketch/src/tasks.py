@@ -52,11 +52,20 @@ MAX_INDEXING_RETRIES = 240
 POLL_INTERVAL_SECONDS = 5
 
 
+def _find_sketch_by_name(timesketch_api_client, sketch_name: str):
+    """Return the first visible Timesketch sketch matching the given name."""
+    for sketch in timesketch_api_client.list_sketches():
+        if sketch.name == sketch_name:
+            return sketch
+    return None
+
+
 def get_or_create_sketch(
     timesketch_api_client,
     redis_client,
     sketch_id: int | str | None = None,
     sketch_name: str | None = None,
+    reuse_existing_sketch: bool = False,
     workflow_id: str | None = None,
 ):
     """
@@ -64,10 +73,13 @@ def get_or_create_sketch(
     This uses Redis distributed lock to avoid race conditions.
 
     Args:
-        client: Timesketch API client.
+        timesketch_api_client: Timesketch API client.
         redis_client: Redis client.
         sketch_id: ID of the sketch to retrieve.
-        sketch_name: Name of the sketch to create.
+        sketch_name: Name of the sketch to create. If reuse_existing_sketch is
+            enabled, an existing sketch with this name is used before creating one.
+        reuse_existing_sketch: Reuse an existing sketch with sketch_name instead
+            of always creating a new named sketch.
         workflow_id: ID of the workflow.
 
     Returns:
@@ -81,7 +93,17 @@ def get_or_create_sketch(
         except ValueError:
             raise ValueError(f"Sketch ID must be a number. Received: '{sketch_id}'")
     elif sketch_name:
-        sketch = timesketch_api_client.create_sketch(sketch_name)
+        if reuse_existing_sketch:
+            with redis_client.lock(
+                f"timesketch-sketch-name:{sketch_name}",
+                timeout=60,
+                blocking_timeout=5,
+            ):
+                sketch = _find_sketch_by_name(timesketch_api_client, sketch_name)
+                if not sketch:
+                    sketch = timesketch_api_client.create_sketch(sketch_name)
+        else:
+            sketch = timesketch_api_client.create_sketch(sketch_name)
     else:
         sketch_name = f"openrelik-workflow-{workflow_id}"
         # Prevent multiple distributed workers from concurrently creating the same
@@ -90,10 +112,7 @@ def get_or_create_sketch(
         # The lock automatically expires after 60 seconds to prevent deadlocks.
         with redis_client.lock(sketch_name, timeout=60, blocking_timeout=5):
             # Search for an existing sketch while having the lock
-            for _sketch in timesketch_api_client.list_sketches():
-                if _sketch.name == sketch_name:
-                    sketch = _sketch
-                    break
+            sketch = _find_sketch_by_name(timesketch_api_client, sketch_name)
 
             # If not found, create a new one
             if not sketch:
@@ -119,9 +138,22 @@ TASK_METADATA = {
         },
         {
             "name": "sketch_name",
-            "label": "Name of the new sketch to create",
-            "description": "Create a new sketch",
+            "label": "Name of the sketch",
+            "description": (
+                "By default, create a new sketch with this name. Enable reuse "
+                "by name to use the first existing sketch with this name instead."
+            ),
             "type": "text",
+            "required": False,
+        },
+        {
+            "name": "reuse_existing_sketch",
+            "label": "Reuse existing sketch by name",
+            "description": (
+                "When enabled, use the first existing sketch with the configured "
+                "name. If none exists, create it."
+            ),
+            "type": "checkbox",
             "required": False,
         },
         {
@@ -221,6 +253,11 @@ def upload(
     # User supplied config.
     sketch_id = task_config.get("sketch_id")
     sketch_name = task_config.get("sketch_name")
+    reuse_existing_sketch = task_config.get("reuse_existing_sketch", False)
+    if isinstance(reuse_existing_sketch, str):
+        reuse_existing_sketch = reuse_existing_sketch.lower() in ["true", "1", "yes"]
+    else:
+        reuse_existing_sketch = bool(reuse_existing_sketch)
 
     # Analyzers config
     selected_analyzers = task_config.get("analyzers", [])
@@ -266,6 +303,7 @@ def upload(
         redis_client,
         sketch_id=sketch_id,
         sketch_name=sketch_name,
+        reuse_existing_sketch=reuse_existing_sketch,
         workflow_id=workflow_id,
     )
 
