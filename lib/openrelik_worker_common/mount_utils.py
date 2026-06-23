@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
 import json
 import logging
 import os
@@ -77,7 +78,16 @@ class BlockDevice:
         self.mountpoints = []
         self.mountroot = "/mnt"
         self.max_mountpath_size = max_mountpath_size
-        self.supported_fstypes = ["dos", "xfs", "ext2", "ext3", "ext4", "ntfs", "vfat", "btrfs"]
+        self.supported_fstypes = [
+            "dos",
+            "xfs",
+            "ext2",
+            "ext3",
+            "ext4",
+            "ntfs",
+            "vfat",
+            "btrfs",
+        ]
         self.supported_qcowtypes = ["qcow3", "qcow2", "qcow"]
         self.supported_ewftypes = ["e01", "ex01"]
         self.ewf_mount_path = None
@@ -353,7 +363,9 @@ class BlockDevice:
             if not shutil.which(command[0]):
                 continue
 
-            process = subprocess.run(command, capture_output=True, check=False, text=True)
+            process = subprocess.run(
+                command, capture_output=True, check=False, text=True
+            )
             if process.returncode == 0:
                 logger.info(f"ewfmount: success unmounting {self.ewf_mount_path}")
                 shutil.rmtree(self.ewf_mount_path, ignore_errors=True)
@@ -362,28 +374,40 @@ class BlockDevice:
             last_error = f"{process.stderr} {process.stdout}"
 
         mount_path = self.ewf_mount_path
-        raise RuntimeError(f"Error unmounting EWF image mount {mount_path}: {last_error}")
+        raise RuntimeError(
+            f"Error unmounting EWF image mount {mount_path}: {last_error}"
+        )
 
     def _required_modules_loaded(self) -> None:
-        """Checks if a required kernel module is loaded.
+        """Checks if a required kernel module is loaded or if nbd devices exist.
 
         The following modules are checked:
-        * nbd  (For mounting qcow disk images)
+        * nbd  (For mounting qcow disk images, either via /dev/nbd* or kernel module)
 
         Raises:
-            RuntimeError: as soon as we find a module that isn't loaded.
+            RuntimeError: If nbd devices aren't present and the module isn't loaded.
         """
+        # 1. Check if nbd devices already exist (compiled-in or already loaded)
+        nbd_devices = glob.glob("/dev/nbd*")
+        if nbd_devices:
+            logger.info(
+                f"Found {len(nbd_devices)} existing nbd device(s). Skipping kernel module check."
+            )
+            return
 
+        # 2. Fallback to checking the kernel module if no devices exist
         for module in ["nbd"]:
             try:
                 subprocess.check_call(
-                        ["/usr/bin/grep", "-E", f"^{module}\\s", "/proc/modules"],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
+                    ["/usr/bin/grep", "-E", f"^{module}\\s", "/proc/modules"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             except subprocess.CalledProcessError:
-                  raise RuntimeError(
-                          f"Required kernel module {module} is not loaded. "
-                          f"Load it with '/sbin/modprobe {module}' on the Host.")
+                raise RuntimeError(
+                    f"Required kernel module {module} is not loaded. "
+                    f"Load it with '/sbin/modprobe {module}' on the Host."
+                )
 
     def _required_tools_available(self) -> bool:
         """Check if required cli tools are available.
