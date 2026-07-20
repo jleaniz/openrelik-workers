@@ -487,6 +487,31 @@ class BlockDevice:
 
         return partitions
 
+    def _is_supported_fs(self, devname: str):
+        """Returns True if the path points to a block device that contains a filesystem of supported type.
+
+        Args:
+            devname (str): block device or partitions device name.
+            
+        Returns:
+            boolean: True if the fstype is supported
+
+        """
+        fs_type = self._get_fstype(devname)
+        if fs_type == "":
+            logger.warning(
+                f"Ignoring partition {devname} as fs type not available!"
+            )
+            return False
+
+        if fs_type not in self.supported_fstypes:
+            logger.warning(
+                f"Ignoring partition {devname} as fs type {fs_type} not supported!"
+            )
+            return False
+
+        return True
+
     def _is_important_partition(self, partition: dict):
         """Decides if we will process a partition. We process the partition if:
         * > 100Mbyte in size
@@ -503,17 +528,8 @@ class BlockDevice:
                 f"Ignoring partion {partition['name']} as size < {self.min_partition_size}"
             )
             return False
-        fs_type = self._get_fstype(f"/dev/{partition['name']}")
-        if fs_type == "":
-            logger.warning(
-                f"Ignoring partition {partition['name']} as fs type not available!"
-            )
-            return False
 
-        if fs_type not in self.supported_fstypes:
-            logger.warning(
-                f"Ignoring partition {partition['name']} as fs type {fs_type} not supported!"
-            )
+        if not self._is_supported_fs(f"/dev/{partition['name']}"):
             return False
 
         return True
@@ -569,7 +585,8 @@ class BlockDevice:
             to_mount.append(partition_name)
         elif not self.partitions:
             # No partitions found, mount the whole block device
-            to_mount.append(self.blkdevice)
+            if self._is_supported_fs(self.blkdevice):
+                to_mount.append(self.blkdevice)
         elif self.partitions:
             # Mount all detected partitions
             to_mount = self.partitions
@@ -617,6 +634,7 @@ class BlockDevice:
             logger.info(f"Trying to mount {mounttarget}")
             mount_command = ["sudo", "mount"]
             fstype = self._get_fstype(mounttarget)
+
             if fstype == "xfs":
                 mount_command.extend(["-o", "ro,norecovery"])
             elif fstype in ["ext2", "ext3", "ext4"]:
