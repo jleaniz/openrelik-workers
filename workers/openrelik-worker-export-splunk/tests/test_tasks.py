@@ -18,6 +18,7 @@ import asyncio
 import base64
 import json
 
+import aiohttp
 import pytest
 
 from src import hec_uploader, tasks
@@ -60,6 +61,35 @@ class _FakeSession:
         self.posts.append({"url": url, "data": data, "headers": headers})
         status, text = self._responses[0] if len(self._responses) == 1 else self._responses.pop(0)
         return _FakeResponse(status, text)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _RaisingResponse:
+    def __init__(self, exc: Exception):
+        self._exc = exc
+
+    async def __aenter__(self):
+        raise self._exc
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _RaisingSession:
+    """aiohttp.ClientSession stand-in whose every post() raises a ClientError."""
+
+    def __init__(self, exc: Exception):
+        self._exc = exc
+        self.posts: list[dict] = []
+
+    def post(self, url, data, headers):
+        self.posts.append({"url": url, "data": data, "headers": headers})
+        return _RaisingResponse(self._exc)
 
     async def __aenter__(self):
         return self
@@ -389,6 +419,133 @@ def test_uploader_still_retries_on_429(tmp_path, monkeypatch):
     assert result.failed_count == 1
     assert len(fake_session.posts) == hec_uploader.MAX_RETRIES
     assert result.permanent_error is None
+
+
+def test_uploader_aborts_after_transport_error_exhausts_retries(tmp_path, monkeypatch):
+    # A ClientError (bad scheme/host, connection refused, TLS failure) means
+    # the request never reached the server -- every other batch would fail
+    # identically, so exhausting retries here must abort the whole run
+    # instead of grinding through the rest of the file.
+    path = _write_jsonl(tmp_path, [{"n": i} for i in range(200)])
+    fake_session = _RaisingSession(aiohttp.client_exceptions.ClientConnectionError("boom"))
+    monkeypatch.setattr(
+        hec_uploader.aiohttp, "ClientSession", lambda connector=None: fake_session
+    )
+    monkeypatch.setattr(hec_uploader.aiohttp, "TCPConnector", lambda **kw: None)
+    monkeypatch.setattr(hec_uploader, "RETRY_BACKOFF_SECONDS", 0)
+    monkeypatch.setattr(hec_uploader, "EVENTS_PER_BATCH", 1)
+
+    uploader = HECUploader(
+        file_path=path,
+        hec_url="http-inputs-crai.splunkcloud.com",  # missing scheme
+        token="tok",
+        index="idx",
+        endpoint="event",
+    )
+    result = asyncio.run(uploader.run())
+
+    assert result.success_count == 0
+    assert result.permanent_error is not None
+    assert "unreachable" in result.permanent_error
+    # Retries happened for the one batch that got picked up, but the run
+    # aborted rather than looping through all 200 batches.
+    assert len(fake_session.posts) == hec_uploader.MAX_RETRIES
+
+
+def test_uploader_transport_error_recovers_without_abort(tmp_path, monkeypatch):
+    # A ClientError followed by a successful response on the same batch
+    # should NOT abort the run -- only exhausting all retries does.
+    path = _write_jsonl(tmp_path, [{"n": 1}])
+
+    class _FlakySession:
+        """Raises a ClientError on the first POST, then succeeds.
+
+        ``post()`` must return a *separate* response object rather than
+        ``self``: ``run()`` enters the session itself via ``async with
+        aiohttp.ClientSession(...)``, so returning ``self`` would make that
+        outer ``__aenter__`` consume the first attempt and hand ``_worker`` a
+        ``_FakeResponse`` (which has no ``.post``) as the session.
+        """
+
+        def __init__(self):
+            self.calls = 0
+            self.posts: list[dict] = []
+
+        def post(self, url, data, headers):
+            self.posts.append({"url": url, "data": data, "headers": headers})
+            self.calls += 1
+            if self.calls == 1:
+                return _RaisingResponse(
+                    aiohttp.client_exceptions.ClientConnectionError("transient")
+                )
+            return _FakeResponse(200, "")
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    fake_session = _FlakySession()
+    monkeypatch.setattr(
+        hec_uploader.aiohttp, "ClientSession", lambda connector=None: fake_session
+    )
+    monkeypatch.setattr(hec_uploader.aiohttp, "TCPConnector", lambda **kw: None)
+    monkeypatch.setattr(hec_uploader, "RETRY_BACKOFF_SECONDS", 0)
+
+    uploader = HECUploader(
+        file_path=path,
+        hec_url="https://hec.example.com",
+        token="tok",
+        index="idx",
+        endpoint="event",
+    )
+    async def _runner():
+        return await asyncio.wait_for(uploader.run(), timeout=5.0)
+
+    result = asyncio.run(_runner())
+
+    assert result.success_count == 1
+    assert result.failed_count == 0
+    assert result.permanent_error is None
+    # One failed attempt then one success -- the retry was used, not the abort.
+    assert len(fake_session.posts) == 2
+
+
+def test_uploader_unexpected_worker_error_does_not_hang(tmp_path, monkeypatch):
+    # A POST failure outside the aiohttp.ClientError hierarchy (e.g. a bare
+    # TimeoutError, or a bug in the fake/real session) must not leave the batch
+    # un-ack'd on the queue -- queue.join() in run() would block forever and
+    # hang the Celery task instead of failing it.
+    path = _write_jsonl(tmp_path, [{"n": 1}])
+
+    class _BrokenSession:
+        posts: list[dict] = []
+
+        def post(self, url, data, headers):
+            raise ValueError("not a ClientError")
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    _install_fake_session(monkeypatch, _BrokenSession())
+
+    uploader = HECUploader(
+        file_path=path,
+        hec_url="https://hec.example.com",
+        token="tok",
+        index="idx",
+        endpoint="event",
+    )
+
+    async def _runner():
+        return await asyncio.wait_for(uploader.run(), timeout=5.0)
+
+    result = asyncio.run(_runner())
+    assert result.success_count == 0
 
 
 def test_upload_requires_env_vars(monkeypatch):

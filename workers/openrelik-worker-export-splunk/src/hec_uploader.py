@@ -241,80 +241,127 @@ class HECUploader:
         return None
 
     async def _worker(self, session: aiohttp.ClientSession) -> None:
+        """Consume queued batches until the shutdown sentinel arrives.
+
+        ``task_done()`` is called from a ``finally`` block so that an
+        unexpected exception can never leave a batch un-ack'd. Only
+        ``aiohttp.ClientError`` is handled below, but a POST can also raise
+        something outside that hierarchy (``TimeoutError`` from
+        ``resp.text()``, a ``UnicodeDecodeError``, or a raising
+        ``progress_cb``). Without the ``finally`` such an error would kill the
+        worker with the batch still counted as unfinished, and
+        ``queue.join()`` in :meth:`run` would then block forever — hanging the
+        whole task instead of failing it.
+        """
         while True:
             item = await self.queue.get()
-            if item is None:
-                self.queue.task_done()
-                return
-
-            payload, batch_count = item
-            retry_count = 0
-            success = False
-
-            while (
-                retry_count < MAX_RETRIES and not success and not self._cancel.is_set()
-            ):
-                try:
-                    async with session.post(
-                        self._post_url,
-                        data=payload,
-                        headers=self.headers,
-                    ) as resp:
-                        status = resp.status
-                        text = await resp.text()
-
-                        if status == 200:
-                            success = True
-                        else:
-                            error_key = f"{status}_{text.strip()[:120]}"
-                            permanent_message = self._classify_failure(status, text)
-                            if permanent_message is not None:
-                                logger.error(
-                                    "Splunk HEC POST permanent failure: %s",
-                                    permanent_message,
-                                )
-                                if self.result.permanent_error is None:
-                                    self.result.permanent_error = permanent_message
-                                self._record_error(error_key)
-                                self._cancel.set()
-                                break
-                            logger.warning(
-                                "Splunk HEC POST failed (attempt %d/%d): %d %s",
-                                retry_count + 1,
-                                MAX_RETRIES,
-                                status,
-                                text[:200],
-                            )
-                            self._record_error(error_key)
-                            retry_count += 1
-                            await asyncio.sleep(RETRY_BACKOFF_SECONDS)
-                except aiohttp.ClientError as e:
-                    logger.warning(
-                        "Splunk HEC POST raised %s (attempt %d/%d)",
-                        e,
-                        retry_count + 1,
-                        MAX_RETRIES,
-                    )
-                    self._record_error(f"client_error_{type(e).__name__}")
-                    retry_count += 1
-                    await asyncio.sleep(RETRY_BACKOFF_SECONDS)
-
-            if success:
-                self.result.success_count += batch_count
-            else:
-                self.result.failed_count += batch_count
-
-            self._batches_completed += 1
-            if self.progress_cb is not None:
-                await self.progress_cb(
-                    UploadProgress(
-                        success_count=self.result.success_count,
-                        failed_count=self.result.failed_count,
-                        batches_completed=self._batches_completed,
-                    )
+            try:
+                if item is None:
+                    return
+                await self._upload_batch(session, *item)
+            except Exception:
+                logger.exception(
+                    "Splunk HEC worker hit an unexpected error, stopping worker"
                 )
+                return
+            finally:
+                self.queue.task_done()
 
-            self.queue.task_done()
+    async def _upload_batch(
+        self, session: aiohttp.ClientSession, payload: bytes, batch_count: int
+    ) -> None:
+        """POST a single batch, retrying transient failures."""
+        retry_count = 0
+        success = False
+        last_client_error: Optional[str] = None
+
+        while retry_count < MAX_RETRIES and not success and not self._cancel.is_set():
+            try:
+                async with session.post(
+                    self._post_url,
+                    data=payload,
+                    headers=self.headers,
+                ) as resp:
+                    status = resp.status
+                    text = await resp.text()
+
+                    if status == 200:
+                        success = True
+                        last_client_error = None
+                    else:
+                        error_key = f"{status}_{text.strip()[:120]}"
+                        permanent_message = self._classify_failure(status, text)
+                        if permanent_message is not None:
+                            logger.error(
+                                "Splunk HEC POST permanent failure: %s",
+                                permanent_message,
+                            )
+                            if self.result.permanent_error is None:
+                                self.result.permanent_error = permanent_message
+                            self._record_error(error_key)
+                            self._cancel.set()
+                            break
+                        logger.warning(
+                            "Splunk HEC POST failed (attempt %d/%d): %d %s",
+                            retry_count + 1,
+                            MAX_RETRIES,
+                            status,
+                            text[:200],
+                        )
+                        self._record_error(error_key)
+                        # An HTTP error response (as opposed to a raised
+                        # ClientError) means the request reached the server, so
+                        # a retry exhaustion here is treated as per-batch, not
+                        # endpoint-wide.
+                        last_client_error = None
+                        retry_count += 1
+                        await asyncio.sleep(RETRY_BACKOFF_SECONDS)
+            except aiohttp.ClientError as e:
+                last_client_error = f"{type(e).__name__}: {e}"
+                logger.warning(
+                    "Splunk HEC POST raised %s (attempt %d/%d)",
+                    e,
+                    retry_count + 1,
+                    MAX_RETRIES,
+                )
+                self._record_error(f"client_error_{type(e).__name__}")
+                retry_count += 1
+                await asyncio.sleep(RETRY_BACKOFF_SECONDS)
+
+        if success:
+            self.result.success_count += batch_count
+        else:
+            self.result.failed_count += batch_count
+            # Retries exhausted on a transport-level error (ClientError: DNS
+            # failure, connection refused, bad scheme, TLS failure) means the
+            # endpoint itself is unreachable -- every other batch would fail
+            # identically, so abort the whole run rather than grinding through
+            # the rest of the file at MAX_RETRIES * RETRY_BACKOFF_SECONDS per
+            # batch. An HTTP-level failure (5xx, 429) reached the server, so it
+            # stays per-batch: the rest of the file may still succeed.
+            if last_client_error is not None and not self._cancel.is_set():
+                message = (
+                    f"Splunk HEC POST unreachable after {MAX_RETRIES} attempts: "
+                    f"{last_client_error}"
+                )
+                logger.error(
+                    "Splunk HEC POST exhausted retries on a transport error, "
+                    "aborting upload: %s",
+                    message,
+                )
+                if self.result.permanent_error is None:
+                    self.result.permanent_error = message
+                self._cancel.set()
+
+        self._batches_completed += 1
+        if self.progress_cb is not None:
+            await self.progress_cb(
+                UploadProgress(
+                    success_count=self.result.success_count,
+                    failed_count=self.result.failed_count,
+                    batches_completed=self._batches_completed,
+                )
+            )
 
     async def run(self) -> UploadResult:
         connector = aiohttp.TCPConnector(
