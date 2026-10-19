@@ -2,11 +2,11 @@
 publish: false
 
 # Worker Metadata. This section is required.
-display_name: User-friendly name of your worker
-description: Brief description of your workers purpose and functionality.
+display_name: Plaso JSON lines to Parquet
+description: Convert plaso JSON lines (psort -o json_line) to Parquet with DuckDB, with typed columns for common event fields and an attributes JSON column for the rest.
 
 # Optional: Third-Party Tools Used by the Worker.
 tools:
-  - display_name: User-friendly name of the tool
-    description: Brief description of the tool
-    url: http://example.com # URL for more info about the tool
+  - display_name: DuckDB
+    description: In-process analytical database used to stream JSON lines into Parquet
+    url: https://duckdb.org/

@@ -5,10 +5,9 @@ FROM ubuntu:24.04
 # the docker container.
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# Install poetry and any other dependency that your worker needs.
+# Install uv and any other dependency that your worker needs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    # Add your dependencies here
     && rm -rf /var/lib/apt/lists/*
 
 # Configure debugging
@@ -23,8 +22,8 @@ WORKDIR /openrelik
 # Install the latest uv binaries
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Copy poetry toml and install dependencies
-COPY uv.lock pyproject.toml .
+# Copy project manifests
+COPY uv.lock pyproject.toml ./
 
 # Install the project's dependencies using the lockfile and settings
 RUN uv sync --locked --no-install-project --no-dev
@@ -39,4 +38,4 @@ RUN uv sync --locked --no-dev
 ENV PATH="/openrelik/.venv/bin:$PATH"
 
 # Default command if not run from docker-compose (and command being overidden)
-CMD ["celery", "--app=src.tasks", "worker", "--task-events", "--concurrency=1", "--loglevel=DEBUG"]
+CMD ["celery", "--app=src.app", "worker", "--task-events", "--concurrency=1", "--loglevel=INFO"]

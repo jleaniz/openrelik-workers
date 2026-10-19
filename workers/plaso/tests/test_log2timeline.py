@@ -82,3 +82,21 @@ def test_single_input_threads_upstream_original_path():
         'input_files[0].get("original_path")' in source
         and 'input_files[0].get("path")' in source
     ), "single-input branch must derive upstream_original with a path fallback"
+
+
+def test_create_task_result_calls_use_output_files_keyword():
+    """create_task_result takes ``output_files``; a misspelled ``output_file``
+    keyword raises TypeError at runtime (e.g. on the empty-input path)."""
+    tree = ast.parse(LOG2TIMELINE_PATH.read_text())
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and getattr(node.func, "id", None) == "create_task_result"
+    ]
+    assert calls, "expected create_task_result calls in log2timeline.py"
+    for call in calls:
+        keywords = {kw.arg for kw in call.keywords}
+        assert "output_file" not in keywords, (
+            f"line {call.lineno}: use output_files=, not output_file="
+        )
